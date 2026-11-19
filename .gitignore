@@ -1,7 +1,7 @@
-# 构建产物
+# 构建产物（注意必须加前导斜杠锚定根目录，否则 `server` 会连 cmd/server/ 源码目录一起忽略）
 /bin/
 /dist/
-server
+/server
 
 # 本地凭据，绝不入库
 .env
