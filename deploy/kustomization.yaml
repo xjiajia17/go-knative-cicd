@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yaml
+  - knative-service.yaml
+
+# 发版的唯一改动点：CI 构建推镜像成功后，只改这里的 newTag 并提交。
+# Argo CD 轮询到 Git 变化 -> 渲染 kustomize -> 发现集群里 image 不一致 -> 自动同步。
+# 用 kustomize 而不是直接 sed 业务 YAML，是为了让"版本"这一个概念只出现在一个地方。
+images:
+  - name: swr.cn-southwest-2.myhuaweicloud.com/bendi/go-knative-cicd
+    newTag: v0.1.0

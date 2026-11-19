@@ -1,0 +1,14 @@
+# 构建产物
+/bin/
+/dist/
+server
+
+# 本地凭据，绝不入库
+.env
+*.secret
+secrets.yaml
+
+# 编辑器/系统
+.DS_Store
+.idea/
+.vscode/
