@@ -7,6 +7,9 @@ spec:
   template:
     metadata:
       annotations:
+        # 命名空间已开自动注入，这里再显式声明一次：一是意图明确，
+        # 二是改动了 template 会触发新 Revision，便于观察注入是否真的生效。
+        sidecar.istio.io/inject: "true"
         # 缩容到 0 的核心开关：min-scale=0 表示无流量时允许把 Pod 全部干掉。
         autoscaling.knative.dev/min-scale: "0"
         autoscaling.knative.dev/max-scale: "3"

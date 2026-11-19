@@ -2,4 +2,7 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: demo
-  # 第 6 步才会加 istio-injection=enabled，先保持干净以便单独验证 Knative 缩容到 0。
+  labels:
+    # 只给业务命名空间开注入。kube-system / knative-serving / monitoring 一律不打，
+    # 否则系统组件被塞进 envoy 会引发探针与启动顺序问题。
+    istio-injection: enabled
