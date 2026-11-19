@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: go-demo
+  namespace: demo
+spec:
+  # 为什么用 PodMonitor 而不是 ServiceMonitor：
+  # Knative 每个 Revision 会生成名字带序号的 Service（go-demo-00001-private…），
+  # 发版后名字就变了，ServiceMonitor 的 selector 会失效。
+  # 而 Pod 上的 serving.knative.dev/service 标签是稳定的，跨 Revision 不变。
+  selector:
+    matchLabels:
+      serving.knative.dev/service: go-demo
+  podMetricsEndpoints:
+    # 注意：Knative 会把用户容器端口重命名为 user-port（清单里写的 http1 只是入参约定）。
+    # 这里必须用 Pod 里真实的端口名。
+    - port: user-port
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
