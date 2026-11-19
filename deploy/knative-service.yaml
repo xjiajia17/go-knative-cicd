@@ -32,7 +32,7 @@ spec:
               containerPort: 8080
           env:
             - name: TARGET
-              value: "GitOps-Verified"
+              value: "Auto-Poll-OK"
           resources:
             requests:
               cpu: 50m
