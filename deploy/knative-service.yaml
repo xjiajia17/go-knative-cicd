@@ -32,7 +32,7 @@ spec:
               containerPort: 8080
           env:
             - name: TARGET
-              value: "Go-Knative-CICD"
+              value: "GitOps-Verified"
           resources:
             requests:
               cpu: 50m
