@@ -1,0 +1,90 @@
+name: release
+
+on:
+  push:
+    branches: [main]
+    # 关键：忽略 CI 自己回写的那个文件，否则 bump-tag 提交会再次触发本流水线 → 无限循环。
+    # （GITHUB_TOKEN 推送本身也不会触发新 workflow，这里是第二道保险。）
+    paths-ignore:
+      - "deploy/kustomization.yaml"
+      - "**.md"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# 同一时间只跑一条发布流水线，避免两次提交互相覆盖 tag。
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  REGISTRY: swr.cn-southwest-2.myhuaweicloud.com
+  IMAGE: swr.cn-southwest-2.myhuaweicloud.com/bendi/go-knative-cicd
+  APP_VERSION: v0.1.0
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27"
+          cache: true
+
+      - name: 静态检查与单测
+        run: |
+          go vet ./...
+          go test ./...
+
+      - name: 计算不可变 tag
+        id: meta
+        run: echo "tag=${APP_VERSION}-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      # Go 交叉编译：在 x86 runner 上直接产出 arm64 静态二进制，不需要 qemu。
+      # 必须 arm64，因为本机 minikube 节点是 Apple Silicon。
+      - name: 编译 linux/arm64
+        run: |
+          mkdir -p bin/linux/arm64
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath \
+            -ldflags="-s -w -X main.version=${APP_VERSION} -X main.commit=${GITHUB_SHA::7}" \
+            -o bin/linux/arm64/server ./cmd/server
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.SWR_USERNAME }}
+          password: ${{ secrets.SWR_PASSWORD }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          tags: ${{ env.IMAGE }}:${{ steps.meta.outputs.tag }}
+
+  bump-tag:
+    needs: build-push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 发版的唯一改动点：只改 kustomization.yaml 的 newTag。
+      # 提交推回 main 后，集群里的 Argo CD 轮询到差异就自动同步 —— 不需要任何入站网络。
+      - name: 回写镜像 tag
+        run: |
+          sed -i "s|newTag: .*|newTag: ${{ needs.build-push.outputs.tag }}|" deploy/kustomization.yaml
+          git diff --stat
+
+      - name: 提交并推送
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore(release): ${{ needs.build-push.outputs.tag }}"
+          git push
