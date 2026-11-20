@@ -12,4 +12,4 @@ resources:
 # 用 kustomize 而不是直接 sed 业务 YAML，是为了让"版本"这一个概念只出现在一个地方。
 images:
   - name: swr.cn-southwest-2.myhuaweicloud.com/bendi/go-knative-cicd
-    newTag: v0.1.0-c58f072
+    newTag: v0.1.0-225b24e
